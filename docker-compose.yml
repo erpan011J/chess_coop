@@ -1,0 +1,51 @@
+version: '1.2'
+
+services:
+  db:
+    image: postgres:13
+    container_name: chesscoop_db
+    environment:
+      POSTGRES_DB: chesscoop
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: root
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:alpine
+    container_name: chesscoop_redis
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: backend/
+    container_name: chesscoop_backend
+    command: daphne -b 0.0.0.0 -p 8000 base.asgi:application
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=base.settings
+    depends_on:
+      - db
+      - redis
+    # restart: on-failure
+
+  frontend:
+    build: frontend/
+    container_name: chesscoop_frontend
+    ports:
+      - "3000:3000"
+    volumes: 
+      - ./frontend/src:/frontend/src
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: npm run dev
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
