@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { useUserStore } from '@/stores/userStore';
 
 const baseURL = 'http://localhost:8000/api';
 
@@ -12,7 +11,7 @@ const axiosInstance = axios.create({
 });
 
 const getErrorMessage = (error) => {
-    if (error.response.data) {
+    if (error.response && error.response.data) {
         const responseData = error.response.data;
         for (let key in responseData) {
             if (Array.isArray(responseData[key])) {
@@ -27,21 +26,20 @@ const getErrorMessage = (error) => {
     }
 };
 
-const updateUserStore = (username, roomName) => {
-    const userStore = useUserStore();
-    userStore.setUserName(username);
-    userStore.setRoomName(roomName);
+const updateLocalStorage = (userName, roomName) => {
+    localStorage.setItem('userName', userName);
+    localStorage.setItem('roomName', roomName);
 };
 
-export const createRoom = async (roomName, username) => {
+export const createRoom = async (roomName, userName) => {
     try {
         // Send data to backend to handle Redis storage
         const response = await axiosInstance.post('/rooms/', {
             name: roomName,
-            username,
+            username: userName,
         });
         let { room_name } = response.data; // Extract room_name from response
-        updateUserStore(username, roomName); // Update local user store
+        updateLocalStorage(userName, roomName); // Update local storage
         return room_name; // Return room_name upon success
     } catch (error) {
         const errorMessage = getErrorMessage(error);
@@ -49,17 +47,30 @@ export const createRoom = async (roomName, username) => {
     }
 };
 
-export const joinRoom = async (roomName, username) => {
+export const joinRoom = async (roomName, userName) => {
     try {
         // Send data to backend to handle Redis storage
         const response = await axiosInstance.post(`/rooms/${roomName}/join/`, {
-            username,
+            username: userName,
         });
 
         let { room_name } = response.data; // Extract room_name from response
-        updateUserStore(username, roomName); // Update local user store
+        updateLocalStorage(userName, roomName); // Update local storage
         return room_name; // Return room_name upon success
     } catch (error) {
+        const errorMessage = getErrorMessage(error);
+        throw new Error(errorMessage);
+    }
+};
+
+export const fetchInitialRoomData = async (roomName, userName) => {
+    try {
+        const response = await axiosInstance.post(`/rooms/${roomName}/initial_data/`, {
+            username: userName,
+        });
+        return response.data;
+    } catch (error) {
+        console.log(error)
         const errorMessage = getErrorMessage(error);
         throw new Error(errorMessage);
     }

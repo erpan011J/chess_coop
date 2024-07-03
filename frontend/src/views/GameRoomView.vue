@@ -21,9 +21,8 @@
 <script setup>
 import { onMounted, ref } from 'vue';
 import { Chess } from 'chess.js';
-import { useUserStore } from '@/stores/userStore';
+import { fetchInitialRoomData } from '@/services/api';
 
-const userStore = useUserStore();
 const chess = new Chess();
 let board;
 
@@ -32,40 +31,68 @@ const snackbar = ref(false);
 const snackbarText = ref('');
 const snackbarColor = ref('');
 const snackbarTimeout = ref(3000);
+const currentTurn = ref('w')
+const tempTurn = ref('w')
+
+// Retrieve username and roomName from localStorage
+const roomName = localStorage.getItem('roomName');
+const userName = localStorage.getItem('userName');
 
 // WebSocket connection
-const socket = new WebSocket(`ws://localhost:8000/ws/chess/${userStore.roomName}/`);
+const socket = new WebSocket(`ws://localhost:8000/ws/chess/${roomName}/`);
+
+// Function to handle game event 
+const handleGameEndings = () => {
+    const gameEndings = [
+        { condition: chess.isCheckmate, message: `Checkmate! ${chess.turn() === 'w' ? 'Black' : 'White'} wins!` },
+        { condition: chess.isDraw, message: 'Draw by stalemate or insufficient material.' },
+        { condition: chess.isInsufficientMaterial, message: 'Draw due to insufficient material.' },
+        { condition: chess.isStalemate, message: 'Stalemate!' },
+        { condition: chess.isGameOver, message: 'Game over!' },
+    ];
+
+    for (const ending of gameEndings) {
+        if (ending.condition.call(chess)) {
+            showSnackbar(ending.message, 'info');
+            break;
+        }
+    }
+};
 
 // Function to handle moves and send them via WebSocket
 const handleMove = (source, target) => {
     if (source === target) return 'snapback';
 
-    const move = chess.move({
+    const move = {
         from: source,
         to: target,
         promotion: 'q'
-    });
+    };
 
-    if (move) {
-        socket.send(JSON.stringify({
-            'move': move
-        }));
+    const piece = chess.get(source);
+    if (!piece || piece.color !== tempTurn.value) {
+        // showSnackbar('Invalid move: it is not your turn.', 'error');
+        return 'snapback';
+    }
 
-        if (chess.isCheckmate()) {
-            const winner = chess.turn() === 'w' ? 'Black' : 'White';
-            showSnackbar(`Checkmate! ${winner} wins!`, 'info');
-        } else if (chess.isDraw()) {
-            showSnackbar('Draw by stalemate or insufficient material.', 'info');
-        } else if (chess.isInsufficientMaterial()) {
-            showSnackbar('Draw due to insufficient material.', 'info');
-        } else if (chess.isStalemate()) {
-            showSnackbar('Stalemate!', 'info');
-        } else if (chess.isGameOver()) {
-            showSnackbar('Game over!', 'info');
+    try {
+        const validMove = chess.move(move);
+
+        if (validMove) {
+            currentTurn.value = chess.turn(); 
+            socket.send(JSON.stringify({
+                'move': validMove,
+                'fen': chess.fen(),
+                'turn': chess.turn(),
+            }));
+
+            handleGameEndings();
+        } else {
+            showSnackbar('Invalid move: Please select a valid move.', 'error');
+            return 'snapback';
         }
-
-        board.position(chess.fen());
-    } else {
+    } catch (error) {
+        // showSnackbar('Invalid move: Please select a valid move.', 'error');
         return 'snapback';
     }
 };
@@ -78,52 +105,82 @@ const showSnackbar = (message, color = 'info', timeout = 5000) => {
     snackbar.value = true;
 };
 
-onMounted(() => {
-    board = Chessboard('board', {
-        draggable: true,
-        dropOffBoard: 'snapback',
-        position: 'start',
-        orientation: 'white',
-        onDrop: handleMove,
-        pieceTheme: piece => {
-            const piecesPath = '/src/assets/pawn/';
-            const pieceMap = {
-                'bK': `${piecesPath}b_king_1x.png`,
-                'bQ': `${piecesPath}b_queen_1x.png`,
-                'bR': `${piecesPath}b_rook_1x.png`,
-                'bB': `${piecesPath}b_bishop_1x.png`,
-                'bN': `${piecesPath}b_knight_1x.png`,
-                'bP': `${piecesPath}b_pawn_1x.png`,
-                'wK': `${piecesPath}w_king_1x.png`,
-                'wQ': `${piecesPath}w_queen_1x.png`,
-                'wR': `${piecesPath}w_rook_1x.png`,
-                'wB': `${piecesPath}w_bishop_1x.png`,
-                'wN': `${piecesPath}w_knight_1x.png`,
-                'wP': `${piecesPath}w_pawn_1x.png`
-            };
-            return pieceMap[piece];
+onMounted(async () => {
+    const orientationToTurn = {
+        'white': 'w',
+        'black': 'b',
+    }
+
+    try {
+        const initialData = await fetchInitialRoomData(roomName, userName);
+        let orientation, position = 'start';
+
+        if (initialData[userName]) {
+            orientation = initialData[userName].orientation;
+        } else {
+            showSnackbar('You are not a player in this room.', 'error');
+            return;
         }
-    });
 
-    // Resize chessboard on window resize
-    window.addEventListener('resize', () => {
-        board.resize();
-    });
+        if (initialData.fen) {
+            chess.load(initialData.fen);
+            position = initialData.fen;
+            tempTurn.value = orientationToTurn[orientation];
+            handleGameEndings();
+        }
 
-    // Handle incoming WebSocket messages
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        const move = data.move;
-
-        chess.move({
-            from: move.from,
-            to: move.to,
-            promotion: move.promotion
+        currentTurn.value = chess.turn(); // Initialize the turn based on the loaded game state
+        board = Chessboard('board', {
+            draggable: true,
+            dropOffBoard: 'snapback',
+            position: position,
+            orientation: orientation,
+            onDrop: handleMove,
+            pieceTheme: piece => {
+                const piecesPath = '/src/assets/pawn/';
+                const pieceMap = {
+                    'bK': `${piecesPath}b_king_1x.png`,
+                    'bQ': `${piecesPath}b_queen_1x.png`,
+                    'bR': `${piecesPath}b_rook_1x.png`,
+                    'bB': `${piecesPath}b_bishop_1x.png`,
+                    'bN': `${piecesPath}b_knight_1x.png`,
+                    'bP': `${piecesPath}b_pawn_1x.png`,
+                    'wK': `${piecesPath}w_king_1x.png`,
+                    'wQ': `${piecesPath}w_queen_1x.png`,
+                    'wR': `${piecesPath}w_rook_1x.png`,
+                    'wB': `${piecesPath}w_bishop_1x.png`,
+                    'wN': `${piecesPath}w_knight_1x.png`,
+                    'wP': `${piecesPath}w_pawn_1x.png`
+                };
+                return pieceMap[piece];
+            }
         });
 
-        board.position(chess.fen());
-    };
+        window.addEventListener('resize', () => {
+            board.resize();
+        });
+
+    } catch (error) {
+        console.log(error);
+        showSnackbar('Error initializing chessboard. Please refresh the page.', 'error');
+    }
 });
+
+// Handle incoming WebSocket messages
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    const move = data.move;
+    const fen = data.fen;
+    const turn = data.turn;
+    if(currentTurn.value == move.color) {
+        chess.move(move);
+        currentTurn.value = chess.turn();
+        tempTurn.value = turn;
+    } 
+    board.position(fen);
+    handleGameEndings();
+};
+
 </script>
 
 <style scoped>

@@ -10,7 +10,7 @@
           <v-card-text class="card-content">
             <v-form ref="formRef" @submit.prevent="handleRoomAction">
               <v-text-field v-model="roomName" label="Room Name" required :rules="roomNameRules"></v-text-field>
-              <v-text-field v-model="username" label="User Name" required :rules="usernameRules"></v-text-field>
+              <v-text-field v-model="userName" label="User Name" required :rules="userNameRules"></v-text-field>
               <div class="btn-container">
                 <v-btn @click="handleCreateRoom" color="primary" class="mr-2">Create</v-btn>
                 <v-btn @click="handleJoinRoom" color="primary" class="mr-2">Join</v-btn>
@@ -34,7 +34,7 @@ import { useRouter } from 'vue-router';
 import { createRoom, joinRoom } from '@/services/api';
 
 const roomName = ref('');
-const username = ref('');
+const userName = ref('');
 const router = useRouter();
 const formRef = ref('');
 
@@ -44,9 +44,10 @@ const snackbarColor = ref('');
 const snackbarTimeout = ref(3000);
 
 const roomNameRules = [
-  (v) => !!v || 'Room Name is required.'
+  (v) => !!v || 'Room Name is required.',
+  (v) => /^[a-zA-Z0-9_]+$/.test(v) || 'Room Name must contain only letters, numbers, and underscores, and no spaces or special characters.'
 ];
-const usernameRules = [
+const userNameRules = [
   (v) => !!v || 'User Name is required.'
 ];
 
@@ -67,9 +68,9 @@ const handleRoomAction = async (action) => {
   try {
     let room;
     if (action === 'create') {
-      room = await createRoom(roomName.value, username.value);
+      room = await createRoom(roomName.value, userName.value);
     } else if (action === 'join') {
-      room = await joinRoom(roomName.value, username.value);
+      room = await joinRoom(roomName.value, userName.value);
     }
 
     if (room) {
