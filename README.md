@@ -39,7 +39,6 @@ docker-compose run chesscoop_backend python manage.py migrate
 ```
 
 4. Access the application:
-- Frontend: Open your web browser and go to http://localhost:3000
-- Backend: The API will be available at http://localhost:8000
+Open your web browser and go to http://localhost:3000
 
 
