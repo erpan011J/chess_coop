@@ -89,6 +89,18 @@ class RedisHandler:
         self.redis_instance.hset(redis_key, "fen", fen)
         self.redis_instance.hset(redis_key, "turn", turn)
 
+    
+    def reset_room(self, room_name, username, player):
+        redis_key = f"room:{room_name}"
+        if player == 1:
+            self.redis_instance.delete(redis_key)
+        elif player == 2:
+            self.redis_instance.hdel(redis_key, username)
+            self.redis_instance.hset(redis_key, "players", 1)
+            self.redis_instance.hset(redis_key, "fen", '')
+            self.redis_instance.hset(redis_key, "move", '')
+            self.redis_instance.hset(redis_key, "turn", '')
+            
     def _decode_json(self, value):
         if value and isinstance(value, bytes):
             try:

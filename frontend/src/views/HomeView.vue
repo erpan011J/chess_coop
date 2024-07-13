@@ -60,11 +60,11 @@ const handleJoinRoom = async () => {
 };
 
 const handleRoomAction = async (action) => {
-  const isValid = await formRef.value.validate();
-  if (!isValid) {
+  const  isValid = await formRef.value.validate();
+  if (!isValid.valid) {
     return;
   }
-
+  
   try {
     let room;
     if (action === 'create') {
