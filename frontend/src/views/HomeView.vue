@@ -20,11 +20,7 @@
         </v-card>
       </v-col>
     </v-row>
-
-    <!-- Snackbar for displaying errors -->
-    <v-snackbar v-model="snackbar" :color="snackbarColor" :timeout="snackbarTimeout">
-      {{ snackbarText }}
-    </v-snackbar>
+    <Snackbar ref="snackbarComponent" />
   </v-container>
 </template>
 
@@ -32,16 +28,13 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { createRoom, joinRoom } from '@/services/api';
+import Snackbar from '@/components/Snackbar.vue';
 
 const roomName = ref('');
 const userName = ref('');
 const router = useRouter();
 const formRef = ref('');
-
-const snackbar = ref(false);
-const snackbarText = ref('');
-const snackbarColor = ref('');
-const snackbarTimeout = ref(3000);
+const snackbarComponent = ref(null);
 
 const roomNameRules = [
   (v) => !!v || 'Room Name is required.',
@@ -77,9 +70,7 @@ const handleRoomAction = async (action) => {
       router.push({ name: 'room', params: { roomname: room } });
     }
   } catch (error) {
-    snackbarText.value = error.message;
-    snackbarColor.value = 'error';
-    snackbar.value = true;
+    snackbarComponent.value.showSnackbar(error.message, 'error');
   }
 };
 </script>

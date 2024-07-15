@@ -28,6 +28,7 @@ Thumbs.db
 node_modules/
 dist/
 !.gitkeep
+vetur.config.js
 
 frontend/package-lock.json
 frontend/public/favicon.ico

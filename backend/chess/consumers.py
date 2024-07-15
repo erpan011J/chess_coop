@@ -28,7 +28,7 @@ class ChessConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         data = json.loads(text_data)
-        message_type = data.get('type', 'move')  # Default to 'move' for backward compatibility
+        message_type = data.get('type', 'move')
 
         handler = getattr(self, f'handle_{message_type}', self.handle_unknown)
         await handler(data)
@@ -62,31 +62,23 @@ class ChessConsumer(AsyncWebsocketConsumer):
 
     async def handle_player_joined(self, data):
         username = data['username']
-        number_of_players = data['number_of_players']
-        player_number = data['player_number']
         
         await self.channel_layer.group_send(
             self.room_group_name,
             {
                 'type': 'send_player_joined',
-                'username': username,
-                'number_of_players': number_of_players,
-                'player_number': player_number,
+                'username': username
             }
         )
 
     async def handle_player_left(self, data):
         username = data['username']
-        number_of_players = data['number_of_players'] - 1
-        player_number = data['player_number']
-        redis_instance.reset_room(self.room_name, username, player_number)
+        redis_instance.reset_room(self.room_name, username)
         await self.channel_layer.group_send(
             self.room_group_name,
             {
                 'type': 'send_player_left',
-                'username': username,
-                'number_of_players': number_of_players,
-                'player_number': player_number,
+                'username': username
             }
         )
 
@@ -113,15 +105,11 @@ class ChessConsumer(AsyncWebsocketConsumer):
     async def send_player_joined(self, event):
         await self.send(text_data=json.dumps({
             'type': 'player_joined',
-            'username': event['username'],
-            'number_of_players': event['number_of_players'],
-            'player_number': event['player_number']
+            'username': event['username']
         }))
 
     async def send_player_left(self, event):
         await self.send(text_data=json.dumps({
             'type': 'player_left',
-            'username': event['username'],
-            'number_of_players': event['number_of_players'],
-            'player_number': event['player_number'],
+            'username': event['username']
         }))

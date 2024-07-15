@@ -1,5 +1,8 @@
 import redis
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RedisHandler:
     def __init__(self):
@@ -90,17 +93,18 @@ class RedisHandler:
         self.redis_instance.hset(redis_key, "turn", turn)
 
     
-    def reset_room(self, room_name, username, player):
+    def reset_room(self, room_name, username):
         redis_key = f"room:{room_name}"
-        if player == 1:
+        player_number = int(self.redis_instance.hget(redis_key, f"{username}:player").decode('utf-8'))
+        if player_number == 1:
             self.redis_instance.delete(redis_key)
-        elif player == 2:
+        elif player_number == 2:
             self.redis_instance.hdel(redis_key, username)
             self.redis_instance.hset(redis_key, "players", 1)
             self.redis_instance.hset(redis_key, "fen", '')
             self.redis_instance.hset(redis_key, "move", '')
-            self.redis_instance.hset(redis_key, "turn", '')
-            
+            self.redis_instance.hset(redis_key, "turn", '') 
+        
     def _decode_json(self, value):
         if value and isinstance(value, bytes):
             try:
