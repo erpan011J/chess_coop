@@ -6,7 +6,7 @@
                     @gameEnding="handleGameEnding" />
             </v-col>
             <v-col cols="12" md="4">
-                <Chat ref="chatComponent" :socket="socket" />
+                <Chat ref="chatComponent" :socket="socket" :userName="userName"/>
             </v-col>
         </v-row>
         <Snackbar ref="snackbarComponent" />
@@ -26,10 +26,12 @@ const boardComponent = ref(null);
 const chatComponent = ref(null);
 const snackbarComponent = ref(null);
 const socket = ref(null);
+const roomName = localStorage.getItem('roomName')
+const userName = localStorage.getItem('userName')
 
 // Set room name and user name from localStorage
-gameStore.setRoomName(localStorage.getItem('roomName'));
-gameStore.setUserName(localStorage.getItem('userName'));
+gameStore.setRoomName(roomName);
+gameStore.setUserName(userName);
 
 const initializeWebSocket = () => {
     socket.value = new WebSocket(`ws://localhost:8000/ws/chess/${gameStore.roomName}/`);

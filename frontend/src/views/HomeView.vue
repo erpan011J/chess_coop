@@ -27,7 +27,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { createRoom, joinRoom } from '@/services/api';
+import { createRoom, joinRoom } from '@/services/roomService';
 import Snackbar from '@/components/Snackbar.vue';
 
 const roomName = ref('');
@@ -59,16 +59,13 @@ const handleRoomAction = async (action) => {
   }
   
   try {
-    let room;
+    let response;
     if (action === 'create') {
-      room = await createRoom(roomName.value, userName.value);
+      response = await createRoom(roomName.value, userName.value);
     } else if (action === 'join') {
-      room = await joinRoom(roomName.value, userName.value);
+      response = await joinRoom(roomName.value, userName.value);
     }
-
-    if (room) {
-      router.push({ name: 'room', params: { roomname: room } });
-    }
+    router.push({ name: 'room', params: { roomname: response.room_name } });
   } catch (error) {
     snackbarComponent.value.showSnackbar(error.message, 'error');
   }

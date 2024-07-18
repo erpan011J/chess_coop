@@ -10,7 +10,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { useGameStore } from '@/stores/gameStore';
 import { Chess } from 'chess.js';
-import { fetchInitialRoomData } from '@/services/api';
+import { fetchInitialRoomData } from '@/services/roomService';
 
 const props = defineProps(['socket', 'showSnackbar']);
 const emit = defineEmits(['gameEnding']);
@@ -88,6 +88,7 @@ const loadInitialData = async () => {
         });
 
     } catch (error) {
+        console.log(error)
         props.showSnackbar('Error initializing chessboard. Please refresh the page.', 'error');
     }
 };

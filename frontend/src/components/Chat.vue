@@ -97,7 +97,7 @@
   }
   
   .message-right .message-content {
-    background-color: #e3f2fd;
+    background-color: #bbdefb;
     border: 1px solid #bbdefb;
   }
   
